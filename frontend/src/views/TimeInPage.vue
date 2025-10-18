@@ -43,19 +43,21 @@
                     : 'Time In'
                 }}
               </ion-button>
-
-              <ion-button
+             <ion-button
                 class="attendance-btn"
                 :disabled="
                   loadingAttendance ||
-                  studentAttendance?.morning_trivia_time_in ||
+                  studentAttendance?.morning_trivia_time_in === '1899-12-31T16:00:00.000Z' || 
+                  (studentAttendance?.morning_trivia_time_in && studentAttendance.morning_trivia_time_in !== '1899-12-31T16:00:00.000Z') ||
                   attendanceControls?.settings?.morning_mid_event === 0
                 "
-                :color="studentAttendance?.morning_trivia_time_in ? 'success' : 'secondary'"
+                :color="studentAttendance?.morning_trivia_time_in && studentAttendance.morning_trivia_time_in !== '1899-12-31T16:00:00.000Z' ? 'success' : 'secondary'"
                 @click="handleTrivia('morning')"
               >
                 {{
-                  studentAttendance?.morning_trivia_time_in
+                  new Date(studentAttendance?.morning_trivia_time_in).toISOString() === '1900-01-01T00:00:00.000Z'
+                    ? 'Missed'
+                    : studentAttendance?.morning_trivia_time_in
                     ? `Trivia: ${new Date(studentAttendance.morning_trivia_time_in).toLocaleTimeString('en-US', {
                         hour: 'numeric',
                         minute: '2-digit',
@@ -110,24 +112,28 @@
               </ion-button>
 
               <ion-button
-                class="attendance-btn"
-                :disabled="
-                  loadingAttendance ||
-                  studentAttendance?.afternoon_trivia_time_in ||
-                  attendanceControls?.settings?.afternoon_mid_event === 0
-                "
-                :color="studentAttendance?.afternoon_trivia_time_in ? 'success' : 'secondary'"
-                @click="handleTrivia('afternoon')"
-              >
-                {{
-                  studentAttendance?.afternoon_trivia_time_in
-                    ? `Trivia: ${new Date(studentAttendance.afternoon_trivia_time_in).toLocaleTimeString('en-US', {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      })}`
-                    : 'Trivia'
-                }}
-              </ion-button>
+              class="attendance-btn"
+              :disabled="
+                loadingAttendance ||
+                studentAttendance?.afternoon_trivia_time_in === '1899-12-31T16:00:00.000Z' || 
+                (studentAttendance?.afternoon_trivia_time_in && studentAttendance.afternoon_trivia_time_in !== '1899-12-31T16:00:00.000Z') ||
+                attendanceControls?.settings?.afternoon_mid_event === 0
+              "
+              :color="studentAttendance?.afternoon_trivia_time_in && studentAttendance.afternoon_trivia_time_in !== '1899-12-31T16:00:00.000Z' ? 'success' : 'secondary'"
+              @click="handleTrivia('afternoon')"
+            >
+              {{
+                new Date(studentAttendance?.afternoon_trivia_time_in).toISOString() === '1900-01-01T00:00:00.000Z'
+                  ? 'Missed'
+                  : studentAttendance?.afternoon_trivia_time_in
+                  ? `Trivia: ${new Date(studentAttendance.afternoon_trivia_time_in).toLocaleTimeString('en-US', {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}`
+                  : 'Trivia'
+              }}
+
+            </ion-button>
 
               <ion-button
                 class="attendance-btn"
@@ -160,7 +166,7 @@
             </ion-card-header>
             <ion-card-content>
               <img
-                :src="`http://localhost:5000/${eventData.event_program_attachment}`"
+                :src="`https://backend.cpceventscan.com/${eventData.event_program_attachment}`"
                 alt="Program Itinerary"
                 class="program-img"
               />
@@ -190,9 +196,19 @@
                 placeholder="Write your feedback here..."
                 auto-grow
               ></ion-textarea>
-              <ion-button expand="block" color="warning" @click="submitFeedback">
-                Submit Feedback
-              </ion-button>
+              <ion-button
+                  @click="submitFeedback"
+                  :disabled="
+                    hasSubmitted ||
+                    loadingAttendance ||
+                    studentAttendance?.feedback_form ||
+                    attendanceControls?.settings?.feedback_form === 0
+                  "
+                  expand="block"
+                  color="warning"
+                >
+                  Submit Feedback
+                </ion-button>
             </ion-card-content>
           </ion-card>
         </div>
@@ -253,22 +269,26 @@ const goToPage = (path) => {
 
 // Distance helper
 function getDistanceFromLatLon(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const R = 6371000; // meters
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
   const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) *
+    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+
+  return Math.round(R * c);
 }
 
 // ✅ Fetch Attendance Controls
 const fetchAttendanceControls = async () => {
   try {
-    const res = await fetch(`http://localhost:5000/api/attendance/controls/${eventId}`, {
+    const res = await fetch(`https://backend.cpceventscan.com/api/attendance/controls/${eventId}`, {
       credentials: "include",
     });
 
@@ -285,9 +305,10 @@ const fetchAttendanceControls = async () => {
 // Fetch latest attendance
 const fetchAttendance = async () => {
   loadingAttendance.value = true;
+
   try {
     const res = await fetch(
-      `http://localhost:5000/api/attendance/${eventId}/check`,
+      `https://backend.cpceventscan.com/api/attendance/${eventId}/check/`,
       { credentials: "include" }
     );
     const data = await res.json();
@@ -301,12 +322,21 @@ const fetchAttendance = async () => {
       afternoon_trivia_time_in: att.afternoon_trivia_time_in,
       afternoon_time_out: att.afternoon_time_out,
     };
+
+    // 🔹 Check DB values only (no localStorage)
+    if (
+      att.trivia_time_in === "1899-12-31T16:00:00.000Z" ||
+      att.afternoon_trivia_time_in === "1899-12-31T16:00:00.000Z"
+    ) {
+      hasSubmitted.value = true;
+    }
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error fetching attendance:", err);
   } finally {
     loadingAttendance.value = false;
   }
 };
+
 
 // Fetch student location
 const fetchLocation = () => {
@@ -338,7 +368,7 @@ const fetchLocation = () => {
 // On mount
 onMounted(async () => {
   try {
-    const resEvents = await fetch("http://localhost:5000/api/events/list", {
+    const resEvents = await fetch("https://backend.cpceventscan.com/api/events/list", {
       credentials: "include",
     });
     const events = await resEvents.json();
@@ -372,18 +402,24 @@ const handleAction = async (action) => {
     (pos) => {
       const { latitude, longitude } = pos.coords;
 
-      const distance = getDistanceFromLatLon(
-        latitude,
-        longitude,
-        parseFloat(eventData.value.latitude),
-        parseFloat(eventData.value.longitude)
-      );
+      const eventLat = parseFloat(eventData.value.latitude);
+      const eventLon = parseFloat(eventData.value.longitude);
+      const distance = getDistanceFromLatLon(latitude, longitude, eventLat, eventLon);
 
-      if (distance > 800) {
+      console.log("📍 Event Location:", eventLat, eventLon);
+      console.log("📱 Student Location:", latitude, longitude);
+      console.log("📏 Calculated Distance (meters):", distance);
+
+      // ⚙️ Set allowed radius
+      const allowedRadius = 25;
+
+      if (distance > allowedRadius) {
+        const diff = Math.round(distance - allowedRadius); // how far beyond the limit
+
         Swal.fire({
           icon: "error",
           title: "Too Far from Event",
-          text: `You are ${Math.round(distance)} meters away.`,
+          text: `You are ${diff} meters away from the allowed area.`,
           didOpen: () => {
             document.body.classList.remove("swal2-height-auto");
             document.documentElement.classList.remove("swal2-height-auto");
@@ -392,7 +428,8 @@ const handleAction = async (action) => {
         return;
       }
 
-      window.location.href = `http://localhost:8100/face-verification?event=${eventId}&action=${action}`;
+      // ✅ Proceed if within allowed distance
+      window.location.href = `https://cpceventscan.com/face-verification?event=${eventId}&action=${action}`;
     },
     (err) => {
       Swal.fire({
@@ -411,51 +448,104 @@ const handleAction = async (action) => {
 
 // Trivia popup
 const handleTrivia = async (period) => {
-  const a = Math.floor(Math.random() * 10) + 1;
-  const b = Math.floor(Math.random() * 10) + 1;
-  const correctAnswer = a + b;
+  try {
+    const res = await axios.get(`https://backend.cpceventscan.com/api/trivia/${eventId}/${period}`);
+    const triviaList = res.data.trivia;
 
-  const { value: userAnswer } = await Swal.fire({
-    title: `Trivia Question`,
-    text: `What is ${a} + ${b}?`,
-    input: "number",
-    inputPlaceholder: "Enter your answer",
-    confirmButtonText: "Submit",
-    allowOutsideClick: false,
-    didOpen: () => {
-      document.body.classList.remove("swal2-height-auto");
-      document.documentElement.classList.remove("swal2-height-auto");
-    },
-  });
+    if (!triviaList || triviaList.length === 0) {
+      Swal.fire({
+        icon: "info",
+        title: "No Trivia Available",
+        text: `No trivia found for ${period} period.`,
+        heightAuto: false,
+        didOpen: () => {
+          document.body.classList.remove("swal2-height-auto");
+          document.documentElement.classList.remove("swal2-height-auto");
+        },
+      });
+      return;
+    }
 
-  if (parseInt(userAnswer) === correctAnswer) {
-    Swal.fire({
-      icon: "success",
-      title: "Correct!",
-      text: "Proceeding to face verification...",
-      timer: 1200,
-      showConfirmButton: false,
+    // 🎯 Pick a random trivia
+    const randomTrivia = triviaList[Math.floor(Math.random() * triviaList.length)];
+
+    const { value: userAnswer } = await Swal.fire({
+      title: "Trivia Question",
+      text: randomTrivia.question,
+      input: "radio",
+      inputOptions: {
+        [randomTrivia.option1]: randomTrivia.option1,
+        [randomTrivia.option2]: randomTrivia.option2,
+      },
+      confirmButtonText: "Submit",
+      inputValidator: (value) => {
+        if (!value) return "You must choose an answer.";
+      },
+      allowOutsideClick: false,
+      heightAuto: false,
       didOpen: () => {
         document.body.classList.remove("swal2-height-auto");
         document.documentElement.classList.remove("swal2-height-auto");
       },
     });
-    handleAction(`${period}_trivia`);
-  } else {
+
+    // ✅ Correct answer
+    if (userAnswer === randomTrivia.correct_answer) {
+      Swal.fire({
+        icon: "success",
+        title: "Correct!",
+        text: "Proceeding to face verification...",
+        timer: 1200,
+        showConfirmButton: false,
+        heightAuto: false,
+        didOpen: () => {
+          document.body.classList.remove("swal2-height-auto");
+          document.documentElement.classList.remove("swal2-height-auto");
+        },
+      });
+
+      // Remove missed status if previously failed
+      localStorage.removeItem(`trivia_missed_${studentId}_${eventId}_${period}`);
+
+      handleAction(`${period}_trivia`);
+    } 
+    else {
+      await axios.put(`https://backend.cpceventscan.com/api/attendance/mark-trivia-missed/${eventId}`, {
+        studentId,
+        period,
+      });
+
+      Swal.fire({
+        icon: "error",
+        title: "Incorrect!",
+        text: "You have missed the trivia for this period.",
+        allowOutsideClick: false,
+        heightAuto: false,
+        didOpen: () => {
+          document.body.classList.remove("swal2-height-auto");
+          document.documentElement.classList.remove("swal2-height-auto");
+        },
+         }).then(() => {
+        window.location.reload();
+      });
+    }
+  } catch (err) {
+    console.error("❌ Trivia fetch error:", err);
     Swal.fire({
       icon: "error",
-      title: "Incorrect!",
-      text: "Please try again.",
-      allowOutsideClick: false,
+      title: "Error Fetching Trivia",
+      text: "Unable to load trivia questions for this period.",
+      heightAuto: false,
       didOpen: () => {
         document.body.classList.remove("swal2-height-auto");
         document.documentElement.classList.remove("swal2-height-auto");
       },
-    }).then(() => handleTrivia(period));
+    });
   }
 };
 
-// Feedback
+const hasSubmitted = ref(false);
+
 const submitFeedback = async () => {
   if (!feedback.value.trim()) {
     Swal.fire({
@@ -472,14 +562,13 @@ const submitFeedback = async () => {
   }
 
   try {
-    // send POST request with Axios
-    const response = await axios.post("http://localhost:5000/api/feedback/add", {
+    const response = await axios.post("https://backend.cpceventscan.com/api/feedback/add", {
       student_id: studentId,
       event_id: eventId,
       notes: feedback.value,
     });
 
-    console.log(response);
+    console.log("🧾 Feedback response:", response.data);
 
     if (response.data.success) {
       Swal.fire({
@@ -493,22 +582,42 @@ const submitFeedback = async () => {
           document.documentElement.classList.remove("swal2-height-auto");
         },
       });
-
-      feedback.value = ""; // clear textarea
+      feedback.value = "";
+      hasSubmitted.value = true;
     } else {
       Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: response.data.error || "Failed to submit feedback.",
+        icon: "info",
+        title: "Already Submitted",
+        text: response.data.error || "You have already submitted feedback for this event.",
         heightAuto: false,
+        confirmButtonText: "OK",
         didOpen: () => {
           document.body.classList.remove("swal2-height-auto");
           document.documentElement.classList.remove("swal2-height-auto");
         },
       });
+      hasSubmitted.value = true;
     }
   } catch (error) {
     console.error("🚨 Axios error:", error);
+
+    // Handle 400 from backend (duplicate feedback)
+    if (error.response && error.response.status === 400) {
+      Swal.fire({
+        icon: "info",
+        title: "Already Submitted",
+        text: error.response.data.error || "You have already submitted feedback for this event.",
+        heightAuto: false,
+        confirmButtonText: "OK",
+        didOpen: () => {
+          document.body.classList.remove("swal2-height-auto");
+          document.documentElement.classList.remove("swal2-height-auto");
+        },
+      });
+      hasSubmitted.value = true;
+      return;
+    }
+
     Swal.fire({
       icon: "error",
       title: "Network Error",

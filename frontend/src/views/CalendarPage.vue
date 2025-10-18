@@ -90,7 +90,7 @@ const formatEventDateRange = (startDate: string, endDate: string) => {
 
 const fetchEvents = async () => {
   try {
-    const response = await axios.get('http://localhost:5000/api/events/list');
+    const response = await axios.get('https://backend.cpceventscan.com/api/events/list');
     events.value = response.data.map((event: any) => ({
       dateRange: formatEventDateRange(event.start_date_time, event.end_date_time),
       description: event.event_description || event.eventName,
@@ -142,7 +142,7 @@ const getNotificationLabel = (createdAt: string) => {
 
 const fetchLoggedInStudent = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/protected', { withCredentials: true });
+    const res = await axios.get('https://backend.cpceventscan.com/api/protected', { withCredentials: true });
     student.value = res.data.student;
     studentId.value = student.value.id;
     studentCourseId.value = student.value.course_id;
@@ -155,7 +155,7 @@ const fetchNotifications = async () => {
   if (!studentId.value) return;
 
   try {
-    const res = await axios.get('http://localhost:5000/api/notifications/list', {
+    const res = await axios.get('https://backend.cpceventscan.com/api/notifications/list', {
       params: { student_id: studentId.value },
     });
 

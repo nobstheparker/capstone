@@ -138,7 +138,7 @@
 
             <div class="image">
              <img
-                :src="`http://localhost:5000/${selectedEvent.event_program_attachment}`"
+                :src="`https://backend.cpceventscan.com/${selectedEvent.event_program_attachment}`"
                 alt="Program Itinerary"
                 class="program-img"/>
             </div>
@@ -267,7 +267,7 @@ const getNotificationLabel = (createdAt: string) => {
 // --- Fetch logged-in student ---
 const fetchLoggedInStudent = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/protected', { withCredentials: true });
+    const res = await axios.get('https://backend.cpceventscan.com/api/protected', { withCredentials: true });
     student.value = res.data.student;
     studentId.value = student.value.id;
     studentCourseId.value = student.value.course_id;
@@ -280,7 +280,7 @@ const fetchLoggedInStudent = async () => {
 const updates = ref<{ id: number; name: string; description: string; status: string }[]>([]);
 const fetchUpdatesForAnnouncements = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/updates');
+    const res = await axios.get('https://backend.cpceventscan.com/api/updates');
     updates.value = res.data.filter((u: any) => u.status === 'Active');
     console.log('Active updates:', updates.value);
   } catch (error) {
@@ -292,7 +292,7 @@ const fetchUpdatesForAnnouncements = async () => {
 const events = ref<any[]>([]);
 const fetchEvents = async () => {
   try {
-    const res = await fetch('http://localhost:5000/api/events/list');
+    const res = await fetch('https://backend.cpceventscan.com/api/events/list');
     if (!res.ok) throw new Error('Failed to fetch events');
     const data = await res.json();
     events.value = data.map((event: any) => ({
@@ -402,7 +402,7 @@ const onKeyDown = (event: KeyboardEvent) => {
 // --- Session check ---
 const checkSession = async () => {
   try {
-    const response = await axios.get('http://localhost:5000/api/protected', { withCredentials: true });
+    const response = await axios.get('https://backend.cpceventscan.com/api/protected', { withCredentials: true });
     if (response.data.message === 'Authenticated') {
       router.push('/');
     } else {
@@ -419,7 +419,7 @@ const refreshNotifications = async () => {
   if (!studentId.value) return;
 
   try {
-    const res = await axios.get('http://localhost:5000/api/notifications/list', {
+    const res = await axios.get('https://backend.cpceventscan.com/api/notifications/list', {
       params: { student_id: studentId.value }
     });
 

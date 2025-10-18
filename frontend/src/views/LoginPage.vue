@@ -2,11 +2,9 @@
   <ion-page>
     <ion-header>
       <ion-toolbar>
-        <ion-title>
           <div class="logo">
             <img src="../../public/img/cpclogo.jpg" alt="CPC Logo" />
           </div>
-        </ion-title>
       </ion-toolbar>
     </ion-header>
 
@@ -80,7 +78,7 @@ const login = async () => {
 
   try {
     const response = await axios.post(
-      'http://localhost:5000/api/students/auth-login',
+      'https://backend.cpceventscan.com/api/students/auth-login',
       { student_id: student_id.value, password: password.value },
       { withCredentials: true }
     );
@@ -129,7 +127,7 @@ const login = async () => {
 
 const checkSession = async () => {
   try {
-    const response = await axios.get('http://localhost:5000/api/protected', { withCredentials: true });
+    const response = await axios.get('https://backend.cpceventscan.com/api/protected', { withCredentials: true });
     if (response.data.message === 'Authenticated') {
       router.push('/');
     } else {
@@ -179,8 +177,8 @@ ion-button::part(native){
 }
 #container {
   padding-bottom: 100px;
-  min-height: max-content;
-  max-height: max-content; 
+  min-height: 100%;
+  max-height: 100%; 
   height: 100%;
 }
 #container form {
@@ -231,7 +229,7 @@ ion-input {
   height: 100px;
 }
 .footer {
-  position: fixed;
+  position: sticky;
   width: 100%;
   bottom: 0;
 }

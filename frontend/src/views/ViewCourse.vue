@@ -44,11 +44,15 @@
                 <li><router-link to="/attendance-records" class="sub">View Attendance Records</router-link></li>
               </ul>
             </li>
-            <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
-            <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
-            <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
-            <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
-            <li><router-link to="/account-center" class="sidebar-link">Account Center</router-link></li>
+             <template v-if="admin && admin.status !== 0">
+              <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
+              <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
+              <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
+              <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
+            </template>
+            <template v-if="admin && admin.status !== 2">
+              <li><router-link to="/Account-center" class="sidebar-link">Account Center</router-link></li>
+            </template>
              <li>
                 <a href="javascript:void(0);" class="sidebar-link" @click="confirmLogout">
                     Log Out
@@ -58,7 +62,7 @@
           </ul>
         </div>
         <div class="main-content">
-          <ion-title class="regCourse">Registered Courses</ion-title>
+          <ion-title class="regCourse">REGISTERED COURSES</ion-title>
           <ion-content class="ion-padding" style="--background: transparent;">
             <ion-row class="ion-align-items-center ion-justify-content-between" style="margin-bottom: 10px;">
               <ion-col size="7">
@@ -152,7 +156,7 @@
                     <ion-input v-model="modalCourseName" />
                   </ion-item>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer" style="background-color: #08055e !important;">
                   <ion-button color="danger" @click="closeModal">Cancel</ion-button>
                   <ion-button color="primary" @click="updateCourseInModal">Save Changes</ion-button>
                 </div>
@@ -192,7 +196,7 @@ import {
 } from '@ionic/vue';
 import { notifications } from 'ionicons/icons';
 import Swal from 'sweetalert2';
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 
@@ -217,7 +221,7 @@ const closeModal = () => {
 
 const updateCourseInModal = async () => {
   try {
-    await axios.put(`http://localhost:5000/api/courses/update/${currentCourseId.value}`, {
+    await axios.put(`https://backend.cpceventscan.com/api/courses/update/${currentCourseId.value}`, {
       CourseCode: modalCourseCode.value,
       CourseName: modalCourseName.value
     });
@@ -260,7 +264,7 @@ const confirmLogout = async () => {
 
   if (result.isConfirmed) {
     try {
-      await axios.post('http://localhost:5000/api/users/admin-logout', {}, { withCredentials: true });
+      await axios.post('https://backend.cpceventscan.com/api/users/admin-logout', {}, { withCredentials: true });
       router.push('/adminLogIn'); // redirect to login page
     } catch (err) {
       console.error(err);
@@ -344,7 +348,7 @@ const filterData = () => {
 
 const fetchCourses = async () => {
   try {
-    const response = await axios.get('http://localhost:5000/api/courses/list');
+    const response = await axios.get('https://backend.cpceventscan.com/api/courses/list');
     courses.value = response.data.courses;
   } catch (error) {
     console.error('Failed to fetch courses:', error);
@@ -352,6 +356,24 @@ const fetchCourses = async () => {
   }
 };
 fetchCourses();
+const admin = ref<any>(null);
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('https://backend.cpceventscan.com/api/check-admin-session', {
+      withCredentials: true
+    });
+
+    if (res.data.loggedIn && res.data.admin) {
+      admin.value = res.data.admin;
+    } else {
+      router.replace('/adminLogIn'); // redirect if not logged in
+    }
+  } catch (err) {
+    console.error('Session check failed:', err);
+    router.replace('/adminLogIn');
+  }
+});
 </script>
 
 <style scoped>
@@ -623,14 +645,14 @@ tbody{
 }
 .bootstrap-modal .modal-dialog {
   width: 100%;
-  height: 100%;
+  height: 800%;
 }
 
 .bootstrap-modal .modal-content {
   border-radius: 0.5rem;
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
   background-color: #fff;
-  height: 100%;
+  height: 80%;
 }
 
 .bootstrap-modal .modal-header,

@@ -2,9 +2,9 @@
   <ion-page>
     <ion-header>
       <ion-toolbar>
-          <div class="logo">
-            <img src="../../public/img/cpclogo.jpg" alt="CPC Logo" />
-          </div>
+        <div class="logo">
+          <img src="../../public/img/cpclogo.jpg" alt="CPC Logo" />
+        </div>
       </ion-toolbar>
     </ion-header>
 
@@ -14,12 +14,17 @@
         <ion-grid class="header">
           <ion-row>
             <ion-col size="3" class="image">
+              <div v-if="!studentImage" class="initials-placeholder">
+                {{ getInitials(student.first_name, student.last_name) }}
+              </div>
               <img
-                src="../../public/img/user.jpg"
+                v-else
+                :src="studentImage"
                 alt="Profile Image"
                 @error="onImageError"
-              >
+              />
             </ion-col>
+
             <ion-col size="9" class="info">
               <h1>{{ fullName }}</h1>
               <span>{{ courseSection }}</span>
@@ -29,31 +34,37 @@
 
         <!-- Menu Options -->
         <ion-list class="menu-list">
-          <ion-item button lines="none" @click="goTo('/personal-info')">
+          <ion-item button lines="none" detail="false" @click="goTo('/personal-info')">
             <ion-label>Personal Information</ion-label>
             <ion-icon :icon="chevronForwardOutline" slot="end" />
           </ion-item>
-          <ion-item button lines="none" @click="goTo('/account-security')">
+
+          <ion-item button lines="none" detail="false" @click="goTo('/account-security')">
             <ion-label>Account Security</ion-label>
             <ion-icon :icon="chevronForwardOutline" slot="end" />
           </ion-item>
-          <ion-item button lines="none" @click="goTo('/student-attendance-record')">
+
+          <ion-item button lines="none" detail="false" @click="goTo('/student-attendance-record')">
             <ion-label>Attendance Records</ion-label>
             <ion-icon :icon="chevronForwardOutline" slot="end" />
           </ion-item>
-          <ion-item button lines="none" @click="goTo('/facial-recognition')">
+
+          <ion-item button lines="none" detail="false" @click="goTo('/facial-recognition')">
             <ion-label>Facial Recognition</ion-label>
             <ion-icon :icon="chevronForwardOutline" slot="end" />
           </ion-item>
-          <ion-item button lines="none" @click="goTo('/student-absent-request')">
+
+          <ion-item button lines="none" detail="false" @click="goTo('/student-absent-request')">
             <ion-label>Absence Requests</ion-label>
             <ion-icon :icon="chevronForwardOutline" slot="end" />
           </ion-item>
-          <ion-item button lines="none" @click="goTo('/student-volunteer-applications')">
+
+          <ion-item button lines="none" detail="false" @click="goTo('/student-volunteer-applications')">
             <ion-label>Volunteer Applications</ion-label>
             <ion-icon :icon="chevronForwardOutline" slot="end" />
           </ion-item>
-          <ion-item button lines="none" @click="goTo('/help-center')">
+
+          <ion-item button lines="none" detail="false" @click="goTo('/help-center')">
             <ion-label>Help Center</ion-label>
             <ion-icon :icon="chevronForwardOutline" slot="end" />
           </ion-item>
@@ -72,11 +83,11 @@
           <ion-icon name="calendar" @click="goTo('/calendar-page')"></ion-icon>
           <ion-icon name="scan" @click="goTo('/scanner')"></ion-icon>
           <div class="notif-icon-wrapper">
-              <router-link to="/notifications">
-                <ion-icon name="notifications" @click="goTo('/notifications')"></ion-icon>
-                <span v-if="unreadCount > 0" class="badge-footer">{{ unreadCount }}</span>
-              </router-link>
-            </div>
+            <router-link to="/notifications">
+              <ion-icon name="notifications" @click="goTo('/notifications')"></ion-icon>
+              <span v-if="unreadCount > 0" class="badge-footer">{{ unreadCount }}</span>
+            </router-link>
+          </div>
           <ion-icon name="person" class="active" @click="goTo('/profile')"></ion-icon>
         </div>
         <ion-text><small>&copy; All Rights Reserved PPG 2025.</small></ion-text>
@@ -146,7 +157,7 @@ const courseSection = computed(() => {
 // --- Fetch Lists ---
 const fetchYearLevels = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/year-level/list');
+    const res = await axios.get('https://backend.cpceventscan.com/api/year-level/list');
     yearLevels.value = res.data.yearLevels || [];
   } catch (error) {
     console.error('Failed to fetch year levels:', error);
@@ -154,7 +165,7 @@ const fetchYearLevels = async () => {
 };
 const fetchCourses = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/courses/list');
+    const res = await axios.get('https://backend.cpceventscan.com/api/courses/list');
     courses.value = res.data.courses || [];
   } catch (error) {
     console.error('Failed to fetch courses:', error);
@@ -162,7 +173,7 @@ const fetchCourses = async () => {
 };
 const fetchSections = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/sections/list');
+    const res = await axios.get('https://backend.cpceventscan.com/api/sections/list');
     sections.value = res.data.sections || [];
   } catch (error) {
     console.error('Failed to fetch sections:', error);
@@ -179,6 +190,7 @@ interface Notification {
   label?: string;
 }
 
+const studentImage = ref('');
 const notifications = ref<Notification[]>([]);
 const unreadCount = ref(0);
 const studentId = ref<number>(0);
@@ -211,7 +223,7 @@ const fetchNotifications = async () => {
   if (!studentId.value) return;
 
   try {
-    const res = await axios.get('http://localhost:5000/api/notifications/list', {
+    const res = await axios.get('https://backend.cpceventscan.com/api/notifications/list', {
       params: { student_id: studentId.value },
     });
 
@@ -245,15 +257,19 @@ const fetchNotifications = async () => {
     console.error('Failed to fetch notifications:', err);
   }
 };
-
+const getInitials = (first: string, last: string) => {
+  if (!first && !last) return '';
+  const firstInitial = first ? first.charAt(0).toUpperCase() : '';
+  const lastInitial = last ? last.charAt(0).toUpperCase() : '';
+  return `${firstInitial}${lastInitial}`;
+};
 // --- Lifecycle ---
 onMounted(async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/protected', { withCredentials: true });
-    if (!res.data.student) {
+    const res = await axios.get('https://backend.cpceventscan.com/api/protected', { withCredentials: true });
+    if (res.data.message !== 'Authenticated') {
       window.location.href = '/login';
-      return;
-    }
+    } 
     student.value = res.data.student;
     studentId.value = student.value.id;
     studentCourseId.value = student.value.course_id;
@@ -289,20 +305,28 @@ const logout = async () => {
     showCancelButton: true,
     confirmButtonText: 'Yes, logout!',
     cancelButtonText: 'Cancel',
+     didOpen: () => {
+      document.body.classList.remove('swal2-height-auto');
+      document.documentElement.classList.remove('swal2-height-auto');
+    }
   });
 
   if (result.isConfirmed) {
     try {
       await axios.post(
-        'http://localhost:5000/api/students/logout-all',
+        'https://backend.cpceventscan.com/api/students/logout-all',
         {},
         { withCredentials: true }
       );
 
       await Swal.fire({
         title: 'Logged out',
-        text: 'You have been logged out from all devices.',
+        text: 'You have been logged out.',
         icon: 'success',
+        didOpen: () => {
+          document.body.classList.remove('swal2-height-auto');
+          document.documentElement.classList.remove('swal2-height-auto');
+        }
       });
 
       window.location.href = '/login';
@@ -324,6 +348,10 @@ const logout = async () => {
   max-width: 768px;
   margin: 0 auto;
   color: #000;
+}
+ion-item ion-icon {
+  color: #08055e;
+  font-size: 20px;
 }
 ion-content {
   --background: #f6f6f6;
@@ -371,6 +399,24 @@ ion-grid.header {
   color: #fff;
 }
 
+ion-list.menu-list {
+  background: #fff !important;
+}
+
+ion-item {
+  --background: #fff !important;
+  --color: #000 !important;
+  color: #000 !important;
+}
+
+ion-item::part(native) {
+  color: #000 !important;
+}
+
+ion-label {
+  color: #000 !important;
+  font-weight: 500;
+}
 /* Menu Items */
 .menu-list {
   background: #fff;
@@ -391,13 +437,28 @@ ion-item ion-label {
 .logout-button {
   margin: 20px 10px;
 }
-.logout-button ion-button {
-  font-weight: bold;
-  --background: #fff;
-  --color: #08055e;
-  border: 2px solid #08055e;
-  border-radius: 10px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+.logout-button ion-button::part(native) {
+    font-weight: 700;
+    --background: #fff !important;
+    border-radius: 10px;
+    color: #000 !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, .15);
+    background: #fff !important;
+}
+.initials-placeholder {
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    border-radius: 100%;
+    font-size: 26px;
+    justify-content: center;
+    background: #ff0;
+    color: #08055e;
+    width: 70px;
+    height: 70px;
+    padding: 5px 0 !important;
+    font-weight: 700;
+    border: 3px solid #fff;
 }
 
 /* Footer */

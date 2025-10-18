@@ -290,7 +290,7 @@ const performFinalCaptureAndVerify = async () => {
 
   try {
     // Verify face
-    const res = await fetch('http://localhost:5000/api/face/verify', {
+    const res = await fetch('https://backend.cpceventscan.com/api/face/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ studentId, image_base64: imgBase64 })
@@ -311,7 +311,7 @@ const performFinalCaptureAndVerify = async () => {
       }
 
       // --- Create or Update Attendance based on action ---
-      const apiBase = 'http://localhost:5000/api/attendance';
+      const apiBase = 'https://backend.cpceventscan.com/api/attendance';
       let apiUrl = '';
       let method = 'PUT';
 
@@ -367,7 +367,7 @@ const performFinalCaptureAndVerify = async () => {
           document.documentElement.classList.remove('swal2-height-auto');
         }
       }).then(() => {
-        window.location.replace(`http://localhost:8100/event-attendance?event=${eventId}`);
+        window.location.replace(`https://cpceventscan.com/event-attendance?event=${eventId}`);
       });
 
       stopAll();

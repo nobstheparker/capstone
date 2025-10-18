@@ -46,11 +46,15 @@
                 <li><router-link to="/attendance-records" class="sub">View Attendance Records</router-link></li>
               </ul>
             </li>
-            <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
-            <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
-            <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
-            <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
-            <li><router-link to="/account-center" class="sidebar-link">Account Center</router-link></li>
+             <template v-if="admin && admin.status !== 0">
+              <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
+              <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
+              <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
+              <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
+            </template>
+            <template v-if="admin && admin.status !== 2">
+              <li><router-link to="/Account-center" class="sidebar-link">Account Center</router-link></li>
+            </template>
             <li>
               <a href="javascript:void(0);" class="sidebar-link" @click="confirmLogout">
                 Log Out
@@ -143,15 +147,15 @@
                     >
                       Activate
                     </ion-button>
-                    <ion-button
-                    size="small"
-                    fill="solid"
-                    style="--background: #07055d; --color: white;"
-                    expand="block"
-                    :router-link="'/attendance-logs'"
-                  >
-                    Attendance
-                  </ion-button>
+                <ion-button
+                  size="small"
+                  fill="solid"
+                  style="--background: #07055d; --color: white;"
+                  expand="block"
+                  @click="goToAttendance(student.student_id)"
+                >
+                  Attendance
+                </ion-button>
                   </td>
                 </tr>
               </tbody>
@@ -211,14 +215,31 @@ const itemsPerPage = 10;
 // Fetch students
 const fetchStudents = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/students/list');
+    const res = await axios.get('https://backend.cpceventscan.com/api/students/list');
     students.value = res.data.students;
   } catch (err) {
     console.error(err);
   }
 };
 
-onMounted(() => fetchStudents());
+const admin = ref<any>(null);
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('https://backend.cpceventscan.com/api/check-admin-session', {
+      withCredentials: true
+    });
+
+    if (res.data.loggedIn && res.data.admin) {
+      admin.value = res.data.admin;
+    } else {
+      router.replace('/adminLogIn'); // redirect if not logged in
+    }
+  } catch (err) {
+    console.error('Session check failed:', err);
+    router.replace('/adminLogIn');
+  } fetchStudents()
+});
 
 // Computed: filtered + sorted
 const filteredStudents = computed(() => {
@@ -271,7 +292,7 @@ const confirmDeactivate = async (id: number) => {
     }
   });
   if (res.isConfirmed) {
-    await axios.put(`http://localhost:5000/api/students/deactivate/${id}`);
+    await axios.put(`https://backend.cpceventscan.com/api/students/deactivate/${id}`);
     fetchStudents();
     Swal.fire({ title: 'Deactivated!', icon: 'success', didOpen: () => {
       document.body.classList.remove('swal2-height-auto');
@@ -292,7 +313,7 @@ const confirmActivate = async (id: number) => {
     }
   });
   if (res.isConfirmed) {
-    await axios.put(`http://localhost:5000/api/students/activate/${id}`);
+    await axios.put(`https://backend.cpceventscan.com/api/students/activate/${id}`);
     fetchStudents();
     Swal.fire({ title: 'Activated!', icon: 'success', didOpen: () => {
       document.body.classList.remove('swal2-height-auto');
@@ -315,9 +336,12 @@ const confirmLogout = async () => {
     }
   });
   if (res.isConfirmed) {
-    await axios.post('http://localhost:5000/api/users/admin-logout', {}, { withCredentials: true });
+    await axios.post('https://backend.cpceventscan.com/api/users/admin-logout', {}, { withCredentials: true });
     router.push('/adminLogIn');
   }
+};
+const goToAttendance = (studentId: string) => {
+  router.push(`/attendance-logs/${studentId}`);
 };
 </script>
 

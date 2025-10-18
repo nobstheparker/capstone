@@ -190,7 +190,7 @@ const submitForm = async () => {
   try {
     // tell Axios to expect plain text response
     const response = await axios.post(
-      'http://localhost:5000/api/absence-request/apply',
+      'https://backend.cpceventscan.com/api/absence-request/apply',
       formData,
       { withCredentials: true }
     );

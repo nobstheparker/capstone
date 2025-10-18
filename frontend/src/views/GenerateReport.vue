@@ -6,11 +6,6 @@
           <div class="admin-logo">
             <img src="../../public/img/cpclogo.jpg" alt="CPC Logo" />
           </div>
-          <div class="toolbar-icons">
-            <ion-button fill="clear" size="small">
-              <ion-icon :icon="notifications" slot="icon-only"></ion-icon>
-            </ion-button>
-          </div>
         </div>
       </ion-toolbar>
     </ion-header>
@@ -50,11 +45,15 @@
                 <li><router-link to="/attendance-records" class="sub">View Attendance Records</router-link></li>
               </ul>
             </li>
-            <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
-            <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
-            <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
-            <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
-            <li><router-link to="/account-center" class="sidebar-link">Account Center</router-link></li>
+            <template v-if="admin && admin.status !== 0">
+              <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
+              <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
+              <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
+              <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
+            </template>
+            <template v-if="admin && admin.status !== 2">
+              <li><router-link to="/Account-center" class="sidebar-link">Account Center</router-link></li>
+            </template>
              <li>
                 <a href="javascript:void(0);" class="sidebar-link" @click="confirmLogout">
                     Log Out
@@ -97,14 +96,14 @@
 
             <!-- Analytics Row 1 -->
             <div class="analytics-row" style="margin-top:16px;">
-              <div class="analytics-card">
+              <!-- <div class="analytics-card">
                 <div class="card-header">Average Time In</div>
                 <div class="card-body">{{ avgTimeIn || '-' }}</div>
               </div>
               <div class="analytics-card">
                 <div class="card-header">Average Time-outs</div>
                 <div class="card-body">{{ avgTimeOut || '-' }}</div>
-              </div>
+              </div> -->
               <div class="analytics-card">
                 <div class="card-header">Complete Attendance</div>
                 <div class="card-body">{{ completeAttendance }}</div>
@@ -135,25 +134,10 @@
               </div>
             </div>
 
-            <!-- Program Attendance Rate -->
+            <!-- Program Attendance Rate as Bar Chart -->
             <h5 style="margin-top:14px;">Program Attendance Rate</h5>
-            <div class="analytics-row" style="margin-top:8px;">
-              <div class="analytics-card">
-                <div class="card-header">BSIT</div>
-                <div class="card-body">{{ programRates.BSIT }}%</div>
-              </div>
-              <div class="analytics-card">
-                <div class="card-header">BSED</div>
-                <div class="card-body">{{ programRates.BSED }}%</div>
-              </div>
-              <div class="analytics-card">
-                <div class="card-header">BEED</div>
-                <div class="card-body">{{ programRates.BEED }}%</div>
-              </div>
-              <div class="analytics-card">
-                <div class="card-header">BSHM</div>
-                <div class="card-body">{{ programRates.BSHM }}%</div>
-              </div>
+            <div style="background-color:#fff; padding:16px; border-radius:10px; margin-top:8px;">
+              <canvas id="programAttendanceChart"></canvas>
             </div>
           </div>
         </div>
@@ -169,12 +153,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import Swal from 'sweetalert2';
-import { IonButton, IonContent, IonHeader, IonIcon, IonPage, IonText, IonToolbar } from '@ionic/vue';
-import { notifications } from 'ionicons/icons';
+import { Chart, registerables } from 'chart.js';
 import axios from 'axios';
+Chart.register(...registerables);
 
 const router = useRouter();
 
@@ -252,38 +236,78 @@ function programCodeFromProgYearSec(s: string | undefined) {
   return parts[0] || '';
 }
 
+/* Chart reference */
+let programChart: Chart | null = null;
+function renderProgramChart() {
+  const ctx = document.getElementById('programAttendanceChart') as HTMLCanvasElement;
+  if (!ctx) return;
+
+  // Set chart height via canvas style
+  ctx.style.height = '250px'; // smaller height
+
+  if (programChart) programChart.destroy();
+
+  programChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(programRates.value),
+      datasets: [{
+        label: 'Attendance Rate (%)',
+        data: Object.values(programRates.value),
+        backgroundColor: [
+          '#000000', // BSIT → black
+          '#2196f3', // BSED → blue
+          '#ffeb3b', // BEED → yellow
+          '#ff9800', // BSHM → orange
+        ],
+        borderColor: '#333',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false, // allows height to apply
+      plugins: { 
+        legend: { display: false },
+        tooltip: { enabled: true }
+      },
+      scales: { 
+        y: { 
+          beginAtZero: true, 
+          max: 100, 
+          title: { display: true, text: 'Rate (%)' } 
+        } 
+      }
+    }
+  });
+}
+
+
+watch(programRates, () => renderProgramChart());
+
 /* Fetch and compute analytics */
 onMounted(async () => {
   const eventId = window.location.pathname.split('/').pop();
   if (!eventId) return;
   try {
-    const res = await axios.get(`http://localhost:5000/api/attendance/details/${eventId}`);
+    const res = await axios.get(`https://backend.cpceventscan.com/api/attendance/details/${eventId}`);
     const payload = res.data;
     attendanceDetails.value = payload.attendanceDetails ?? [];
-
     if (!attendanceDetails.value.length) return;
 
-    // Event basic info
     const firstEvent = attendanceDetails.value[0];
     eventName.value = firstEvent.event_name ?? '';
     eventDate.value = firstEvent.startDateTime ?? '';
 
-    // Event Status based on start and end date
     const startDate = new Date(firstEvent.startDateTime);
     const endDate = new Date(firstEvent.endDateTime);
     const now = new Date();
 
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      eventStats.value = 'Unknown';
-    } else if (now < startDate) {
-      eventStats.value = 'Upcoming';
-    } else if (now >= startDate && now <= endDate) {
-      eventStats.value = 'Ongoing';
-    } else if (now > endDate) {
-      eventStats.value = 'Completed';
-    }
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) eventStats.value = 'Unknown';
+    else if (now < startDate) eventStats.value = 'Upcoming';
+    else if (now >= startDate && now <= endDate) eventStats.value = 'Ongoing';
+    else if (now > endDate) eventStats.value = 'Completed';
 
-    // Summary counts
     totalAttendees.value = attendanceDetails.value.length;
     completeAttendance.value = attendanceDetails.value.filter(d => d.timeIn && d.midEventcheck && d.timeOut).length;
     totalAbsences.value = attendanceDetails.value.filter(d => !d.timeIn && !d.midEventcheck && !d.timeOut).length;
@@ -299,25 +323,37 @@ onMounted(async () => {
     missedMidChecks.value = attendanceDetails.value.filter(d => !d.midEventcheck).length;
     attendanceRate.value = totalAttendees.value === 0 ? 0 : Math.round((completeAttendance.value / totalAttendees.value) * 100);
 
-    // Average time
     const timeInMins = attendanceDetails.value.map(d => parseTimeToMinutes(d.timeIn)).filter(v => v != null) as number[];
     const timeOutMins = attendanceDetails.value.map(d => parseTimeToMinutes(d.timeOut)).filter(v => v != null) as number[];
 
     avgTimeIn.value = timeInMins.length ? formatMinutesToTime(Math.round(timeInMins.reduce((a,b)=>a+b,0)/timeInMins.length)) : '';
     avgTimeOut.value = timeOutMins.length ? formatMinutesToTime(Math.round(timeOutMins.reduce((a,b)=>a+b,0)/timeOutMins.length)) : '';
 
-    // Program rates
     const rateMap: Record<string, number> = { BSIT:0, BSED:0, BEED:0, BSHM:0 };
     attendanceDetails.value.forEach(d => {
       const code = programCodeFromProgYearSec(d.progYearSec);
-      if (code && rateMap.hasOwnProperty(code)) {
-        rateMap[code] = parseFloat(d.programAttendanceRate) || 0;
-      }
+      if (code && rateMap.hasOwnProperty(code)) rateMap[code] = parseFloat(d.programAttendanceRate) || 0;
     });
     programRates.value = rateMap;
 
-  } catch(err) {
-    console.error(err);
+  } catch(err) { console.error(err); }
+});
+const admin = ref<any>(null);
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('https://backend.cpceventscan.com/api/check-admin-session', {
+      withCredentials: true
+    });
+
+    if (res.data.loggedIn && res.data.admin) {
+      admin.value = res.data.admin;
+    } else {
+      router.replace('/adminLogIn'); // redirect if not logged in
+    }
+  } catch (err) {
+    console.error('Session check failed:', err);
+    router.replace('/adminLogIn');
   }
 });
 
@@ -334,22 +370,15 @@ const confirmLogout = async () => {
       document.documentElement.classList.remove('swal2-height-auto');
     },
   });
-
   if (result.isConfirmed) {
     try {
-      await axios.post('http://localhost:5000/api/users/admin-logout', {}, { withCredentials: true });
-      router.push('/adminLogIn'); // redirect to login page
+      await axios.post('https://backend.cpceventscan.com/api/users/admin-logout', {}, { withCredentials: true });
+      router.push('/adminLogIn');
     } catch (err) {
       console.error(err);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Logout failed',
-        didOpen: () => {
-          document.body.classList.remove('swal2-height-auto');
-          document.documentElement.classList.remove('swal2-height-auto');
-        }
-      });
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Logout failed', didOpen: () => {
+        document.body.classList.remove('swal2-height-auto'); document.documentElement.classList.remove('swal2-height-auto');
+      }});
     }
   }
 };
@@ -365,6 +394,7 @@ const confirmLogout = async () => {
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center;
+  padding-bottom: 200px;
 }
 
 .content-wrapper {
@@ -448,6 +478,7 @@ const confirmLogout = async () => {
 .main-content {
   flex: 1;
   padding: 20px;
+  padding-bottom: 200px !important;
 }
 
 .admin-logo {

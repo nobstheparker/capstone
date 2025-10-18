@@ -71,7 +71,7 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 
 const router = useRouter();
-const API_URL = 'http://localhost:5000/api/users/admin-login';
+const API_URL = 'https://backend.cpceventscan.com/api/users/admin-login';
 
 const email = ref('');
 const password = ref('');
@@ -133,7 +133,7 @@ const logIn = async () => {
 };
 const checkSession = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/check-admin-session', { withCredentials: true });
+    const res = await axios.get('https://backend.cpceventscan.com/api/check-admin-session', { withCredentials: true });
     if (res.data.loggedIn) {
       router.replace('/dashboard');
     }

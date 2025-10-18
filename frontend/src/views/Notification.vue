@@ -52,19 +52,15 @@
                 <li><router-link to="/attendance-records" class="sub">View Attendance Records</router-link></li>
               </ul>
             </li>
-            <li>
-              <router-link to="/Request" class="sidebar-link">Request Management</router-link>
-            </li>
-            <li>
-              <router-link to="/Notif" class="sidebar-link">Notification Management</router-link>
-            </li>
-            <li>
-              <router-link to="/Feed" class="sidebar-link">Feedback Management</router-link>
-            </li>
-            <li>
-              <router-link to="/Update" class="sidebar-link">Featured Updates</router-link>
-            </li>
-            <li><router-link to="/account-center" class="sidebar-link">Account Center</router-link></li>
+             <template v-if="admin && admin.status !== 0">
+              <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
+              <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
+              <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
+              <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
+            </template>
+            <template v-if="admin && admin.status !== 2">
+              <li><router-link to="/Account-center" class="sidebar-link">Account Center</router-link></li>
+            </template>
             <li>
               <router-link to="/adminLogIn" class="sidebar-link" @click="confirmLogout">
                 Log Out
@@ -288,14 +284,14 @@ const searchQueryStudents = ref('');
 // Fetch data safely
 const fetchCourses = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/courses/list');
+    const res = await axios.get('https://backend.cpceventscan.com/api/courses/list');
     courses.value = Array.isArray(res.data.courses) ? res.data.courses : [];
     console.log('Courses:', courses.value);
   } catch (err) { console.error(err); courses.value = []; }
 };
 const fetchStudents = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/students/list');
+    const res = await axios.get('https://backend.cpceventscan.com/api/students/list');
     if (Array.isArray(res.data.students)) {
       students.value = res.data.students.map(s => ({
         ...s,
@@ -306,10 +302,28 @@ const fetchStudents = async () => {
   } catch (err) { console.error(err); students.value = []; }
 };
 const fetchNotifications = async () => {
-  try { const res = await axios.get('http://localhost:5000/api/notifications/list-all'); notificationsList.value = Array.isArray(res.data) ? res.data : []; } catch (err) { console.error(err); notificationsList.value=[]; }
+  try { const res = await axios.get('https://backend.cpceventscan.com/api/notifications/list-all'); notificationsList.value = Array.isArray(res.data) ? res.data : []; } catch (err) { console.error(err); notificationsList.value=[]; }
 };
 
-onMounted(() => { fetchCourses(); fetchStudents(); fetchNotifications(); });
+const admin = ref<any>(null);
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('https://backend.cpceventscan.com/api/check-admin-session', {
+      withCredentials: true
+    });
+
+    if (res.data.loggedIn && res.data.admin) {
+      admin.value = res.data.admin;
+    } else {
+      router.replace('/adminLogIn'); // redirect if not logged in
+    }
+  } catch (err) {
+    console.error('Session check failed:', err);
+    router.replace('/adminLogIn');
+  }
+  fetchCourses(); fetchStudents(); fetchNotifications(); 
+});
 
 // Computed
 const filteredStudents = computed(() => {
@@ -398,7 +412,7 @@ const saveNotification = async () => {
   try {
     if (isEdit.value && editId.value) {
   // CALL UPDATE API
-  await axios.put(`http://localhost:5000/api/notifications/update/${editId.value}`, payload);
+  await axios.put(`https://backend.cpceventscan.com/api/notifications/update/${editId.value}`, payload);
     Swal.fire({
       icon: 'success',
       title: 'Notification updated!',
@@ -409,7 +423,7 @@ const saveNotification = async () => {
     });
   } else {
     // CALL CREATE API
-    await axios.post('http://localhost:5000/api/notifications/create', payload);
+    await axios.post('https://backend.cpceventscan.com/api/notifications/create', payload);
     Swal.fire({
       icon: 'success',
       title: 'Notification created!',
@@ -442,7 +456,7 @@ const deleteNotification = async (id:number) => {
   });
   if (result.isConfirmed) {
   try {
-    await axios.delete(`http://localhost:5000/api/notifications/delete/${id}`);
+    await axios.delete(`https://backend.cpceventscan.com/api/notifications/delete/${id}`);
     await fetchNotifications();
     Swal.fire({
       icon: 'success',

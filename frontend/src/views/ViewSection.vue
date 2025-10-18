@@ -44,11 +44,15 @@
                 <li><router-link to="/attendance-records" class="sub">View Attendance Records</router-link></li>
               </ul>
             </li>
-            <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
-            <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
-            <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
-            <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
-            <li><router-link to="/account-center" class="sidebar-link">Account Center</router-link></li>
+            <template v-if="admin && admin.status !== 0">
+              <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
+              <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
+              <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
+              <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
+            </template>
+            <template v-if="admin && admin.status !== 2">
+              <li><router-link to="/Account-center" class="sidebar-link">Account Center</router-link></li>
+            </template>
              <li>
                 <a href="javascript:void(0);" class="sidebar-link" @click="confirmLogout">
                     Log Out
@@ -57,7 +61,7 @@
           </ul>
         </div>
         <div class="main-content">
-          <ion-title class="regCourse">Registered Sections</ion-title>
+          <ion-title class="regCourse">REGISTERED SECTION</ion-title>
 
           <ion-content class="ion-padding" style="--background: transparent;">
             <ion-row class="ion-align-items-center ion-justify-content-between" style="margin-bottom: 10px;">
@@ -260,7 +264,7 @@ const saveSectionUpdate = async () => {
 
   isSaving.value = true;
   try {
-    await axios.put(`http://localhost:5000/api/sections/update/${modalData.value.section_id}`, {
+    await axios.put(`https://backend.cpceventscan.com/api/sections/update/${modalData.value.section_id}`, {
       courseId: Number(modalData.value.course_code),
       yearId: Number(modalData.value.year_level),
       sectionName: modalData.value.section_name
@@ -307,7 +311,7 @@ const saveSectionUpdate = async () => {
 
   if (result.isConfirmed) {
     try {
-      await axios.post('http://localhost:5000/api/users/admin-logout', {}, { withCredentials: true });
+      await axios.post('https://backend.cpceventscan.com/api/users/admin-logout', {}, { withCredentials: true });
       router.push('/adminLogIn'); // redirect to login page
     } catch (err) {
       console.error(err);
@@ -344,7 +348,7 @@ interface SectionData {
 
 const fetchSections = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/sections/list');
+    const res = await axios.get('https://backend.cpceventscan.com/api/sections/list');
     section.value = res.data.sections.map((sec: any) => ({
       sectionID: sec.section_id,
       CourseID: String(sec.course_id),  
@@ -361,7 +365,7 @@ const fetchSections = async () => {
 
 const fetchCourses = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/courses/list');
+    const res = await axios.get('https://backend.cpceventscan.com/api/courses/list');
     courses.value = res.data.courses;
   } catch (error) {
     console.error('Failed to fetch courses:', error);
@@ -370,14 +374,30 @@ const fetchCourses = async () => {
 
 const fetchYearLevels = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/year-level/list');
+    const res = await axios.get('https://backend.cpceventscan.com/api/year-level/list');
     yearLevels.value = res.data.yearLevels;
   } catch (error) {
     console.error('Failed to fetch year levels:', error);
   }
 };
 
-onMounted(() => {
+const admin = ref<any>(null);
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('https://backend.cpceventscan.com/api/check-admin-session', {
+      withCredentials: true
+    });
+
+    if (res.data.loggedIn && res.data.admin) {
+      admin.value = res.data.admin;
+    } else {
+      router.replace('/adminLogIn'); // redirect if not logged in
+    }
+  } catch (err) {
+    console.error('Session check failed:', err);
+    router.replace('/adminLogIn');
+  }
   fetchSections();
   fetchCourses();
   fetchYearLevels();

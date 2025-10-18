@@ -145,7 +145,7 @@ const verifyCode = async () => {
 
   try {
     const response = await axios.post(
-      "http://localhost:5000/api/students/verify-twofa",
+      "https://backend.cpceventscan.com/api/students/verify-twofa",
       { code: code.value },
       { withCredentials: true }
     );
@@ -211,7 +211,7 @@ const resendCode = async () => {
 
   try {
     const response = await axios.post(
-      "http://localhost:5000/api/students/resend-twofa",
+      "https://backend.cpceventscan.com/api/students/resend-twofa",
       {
         student_id: pendingTwoFA.student_id,
         email: pendingTwoFA.email,

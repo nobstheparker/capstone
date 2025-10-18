@@ -44,11 +44,15 @@
                 <li><router-link to="/attendance-records" class="sub">View Attendance Records</router-link></li>
               </ul>
             </li>
-            <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
-            <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
-            <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
-            <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
-            <li><router-link to="/account-center" class="sidebar-link">Account Center</router-link></li>
+             <template v-if="admin && admin.status !== 0">
+              <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
+              <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
+              <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
+              <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
+            </template>
+            <template v-if="admin && admin.status !== 2">
+              <li><router-link to="/Account-center" class="sidebar-link">Account Center</router-link></li>
+            </template>
             <li>
                 <a href="javascript:void(0);" class="sidebar-link" @click="confirmLogout">
                     Log Out
@@ -58,7 +62,7 @@
         </div>
         <!-- Main Content -->
         <div class="main-content">
-          <ion-title class="regCourse">Registered Year Level</ion-title>
+          <ion-title class="regCourse">REGISTERED YEAR LEVEL</ion-title>
           <ion-content class="ion-padding" style="--background: transparent;">
             <ion-row class="ion-align-items-center ion-justify-content-between" style="margin-bottom: 10px;">
               <ion-col size="7">
@@ -182,7 +186,7 @@ import {
   IonInput,
 } from '@ionic/vue';
 import { notifications } from 'ionicons/icons';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import Swal from 'sweetalert2';
@@ -214,7 +218,7 @@ const closeModal = () => {
 
 const fetchYearLevels = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/year-level/list');
+    const res = await axios.get('https://backend.cpceventscan.com/api/year-level/list');
     year.value = res.data.yearLevels;
     courses.value = [...new Set(res.data.yearLevels.map(item => item.CourseCode).filter(Boolean))];
   } catch (error) {
@@ -226,7 +230,7 @@ fetchYearLevels();
 
 const fetchCourses = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/courses/list');
+    const res = await axios.get('https://backend.cpceventscan.com/api/courses/list');
     courses.value = res.data.courses;
   } catch (error) {
     console.error('Failed to fetch courses:', error);
@@ -254,7 +258,7 @@ const openEditModal = (item: YearLevel) => {
 const updateYearLevel = async () => {
   if (!selectedYear.value) return;
   try {
-    await axios.put(`http://localhost:5000/api/year-level/update/${selectedYear.value.YearID}`, {
+    await axios.put(`https://backend.cpceventscan.com/api/year-level/update/${selectedYear.value.YearID}`, {
       courseId: selectedCourseId.value,  
       yearLevel: newYearLvl.value  
     });
@@ -300,7 +304,7 @@ const updateYearLevel = async () => {
 
   if (result.isConfirmed) {
     try {
-      await axios.post('http://localhost:5000/api/users/admin-logout', {}, { withCredentials: true });
+      await axios.post('https://backend.cpceventscan.com/api/users/admin-logout', {}, { withCredentials: true });
       router.push('/adminLogIn'); // redirect to login page
     } catch (err) {
       console.error(err);
@@ -357,6 +361,24 @@ const sortData = (column: keyof YearLevel) => {
 const filterData = () => {
   currentPage.value = 1;
 };
+const admin = ref<any>(null);
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('https://backend.cpceventscan.com/api/check-admin-session', {
+      withCredentials: true
+    });
+
+    if (res.data.loggedIn && res.data.admin) {
+      admin.value = res.data.admin;
+    } else {
+      router.replace('/adminLogIn'); 
+    }
+  } catch (err) {
+    console.error('Session check failed:', err);
+    router.replace('/adminLogIn');
+  }
+});
 </script>
 
 <style scoped>

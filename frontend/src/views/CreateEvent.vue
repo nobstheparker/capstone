@@ -50,21 +50,15 @@
                 <li><router-link to="/attendance-records" class="sub">View Attendance Records</router-link></li>
               </ul>
             </li>
-            <li>
-              <router-link to="/Request" class="sidebar-link">Request Management</router-link>
-            </li>
-            <li>
-              <router-link to="/Notif" class="sidebar-link">Notification Management</router-link>
-            </li>
-            <li>
-              <router-link to="/Feed" class="sidebar-link">Feedback Management</router-link>
-            </li>
-            <li>
-              <router-link to="/Update" class="sidebar-link">Featured Updates</router-link>
-            </li>
-            <li>
-              <router-link to="/account-center" class="sidebar-link">Account Center</router-link>
-            </li>
+           <template v-if="admin && admin.status !== 0">
+              <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
+              <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
+              <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
+              <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
+            </template>
+            <template v-if="admin && admin.status !== 2">
+              <li><router-link to="/Account-center" class="sidebar-link">Account Center</router-link></li>
+            </template>
              <li>
                 <a href="javascript:void(0);" class="sidebar-link" @click="confirmLogout">
                     Log Out
@@ -356,8 +350,9 @@ import {
 } from '@ionic/vue';
 import { notifications } from 'ionicons/icons';
 import Swal from 'sweetalert2';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import axios from 'axios';
 
 const router = useRouter();
 
@@ -377,7 +372,7 @@ const confirmLogout = async () => {
 
   if (result.isConfirmed) {
     try {
-      await axios.post('http://localhost:5000/api/users/admin-logout', {}, { withCredentials: true });
+      await axios.post('https://backend.cpceventscan.com/api/users/admin-logout', {}, { withCredentials: true });
       router.push('/adminLogIn'); // redirect to login page
     } catch (err) {
       console.error(err);
@@ -597,7 +592,7 @@ const handleRegister = async () => {
       longitude: selectedLocationLon.value
     };
 
-    const response = await fetch('http://localhost:5000/api/events', {
+    const response = await fetch('https://backend.cpceventscan.com/api/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(eventData),
@@ -629,6 +624,24 @@ const handleRegister = async () => {
     });
   }
 };
+const admin = ref<any>(null);
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('https://backend.cpceventscan.com/api/check-admin-session', {
+      withCredentials: true
+    });
+
+    if (res.data.loggedIn && res.data.admin) {
+      admin.value = res.data.admin;
+    } else {
+      router.replace('/adminLogIn'); // redirect if not logged in
+    }
+  } catch (err) {
+    console.error('Session check failed:', err);
+    router.replace('/adminLogIn');
+  }
+});
 </script>
 
 

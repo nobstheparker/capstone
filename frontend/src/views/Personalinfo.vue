@@ -8,7 +8,10 @@
       </ion-toolbar>
     </ion-header>
 
-    <ion-content fullscreen>
+    <ion-content class="fixed-content"
+      :scrollAssist="false"
+      :keyboard-attach="false"
+      keyboard-resize="none">
       <div id="container">
         <!-- Sub-header -->
         <div class="header-bottom">
@@ -216,7 +219,7 @@ const calculatedAge = computed(() => {
 });
 const fetchYearLevels = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/year-level/list');
+    const res = await axios.get('https://backend.cpceventscan.com/api/year-level/list');
     yearLevels.value = res.data.yearLevels || [];
   } catch (error) {
     console.error('Failed to fetch year levels:', error);
@@ -225,7 +228,7 @@ const fetchYearLevels = async () => {
 
 const fetchCourses = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/courses/list');
+    const res = await axios.get('https://backend.cpceventscan.com/api/courses/list');
     courses.value = res.data.courses || [];
   } catch (error) {
     console.error('Failed to fetch courses:', error);
@@ -233,7 +236,7 @@ const fetchCourses = async () => {
 };
 const fetchSections = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/sections/list');
+    const res = await axios.get('https://backend.cpceventscan.com/api/sections/list');
     sections.value = res.data.sections || [];
   } catch (error) {
     console.error('Failed to fetch sections:', error);
@@ -275,7 +278,7 @@ const saveChanges = async () => {
     console.log('Payload being sent to backend:', payload);
 
     await axios.put(
-      `http://localhost:5000/api/students/update-student/${student.value.id}`,
+      `https://backend.cpceventscan.com/api/students/update-student/${student.value.id}`,
       payload,
       { withCredentials: true }
     );
@@ -310,7 +313,7 @@ const saveChanges = async () => {
 };
 onMounted(async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/protected', {
+    const res = await axios.get('https://backend.cpceventscan.com/api/protected', {
       withCredentials: true
     });
     student.value = res.data.student;
@@ -428,7 +431,7 @@ ion-select .select-icon{
 }
 /* Footer */
 .footer {
-  position: sticky;
+  position: fixed;
   bottom: 0;
   width: 100%;
   z-index: 100;
@@ -468,5 +471,10 @@ ion-text {
   align-items: center;
   padding: 10px;
   font-size: 14px;
+}
+.fixed-content {
+  --keyboard-offset: 0px !important;
+  --offset-top: 0px !important;
+  --offset-bottom: 0px !important;
 }
 </style>

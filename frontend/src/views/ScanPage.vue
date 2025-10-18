@@ -150,7 +150,7 @@ function redirectWithCountdown(eventName: string) {
     return;
   }
 
-  fetch(`http://localhost:5000/api/events/list/${eventName}`, { credentials: "include" })
+  fetch(`https://backend.cpceventscan.com/api/events/list/${eventName}`, { credentials: "include" })
     .then(res => {
       if (!res.ok) throw new Error("Event not found");
       return res.json();
@@ -163,7 +163,11 @@ function redirectWithCountdown(eventName: string) {
       Swal.fire({
         icon: "error",
         title: "Event Not Found",
-        text: "This QR code does not match any event."
+        text: "This QR code does not match any event.",
+        didOpen: () => {
+          document.body.classList.remove('swal2-height-auto');
+          document.documentElement.classList.remove('swal2-height-auto');
+        }
       }).then(() => window.location.reload());
     });
 }
@@ -223,7 +227,7 @@ const getNotificationLabel = (createdAt: string) => {
 
 const fetchLoggedInStudent = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/protected', { withCredentials: true });
+    const res = await axios.get('https://backend.cpceventscan.com/api/protected', { withCredentials: true });
     student.value = res.data.student;
     studentId.value = student.value.id;
     studentCourseId.value = student.value.course_id;
@@ -236,7 +240,7 @@ const fetchNotifications = async () => {
   if (!studentId.value) return;
 
   try {
-    const res = await axios.get('http://localhost:5000/api/notifications/list', {
+    const res = await axios.get('https://backend.cpceventscan.com/api/notifications/list', {
       params: { student_id: studentId.value },
     });
 

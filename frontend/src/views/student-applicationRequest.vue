@@ -191,7 +191,7 @@ const selectedRequest = ref<VolunteerApplication | null>(null);
 let dataTable: any = null;
 const fetchVolunteerApplications = async () => {
   try {
-    const res = await axios.get("http://localhost:5000/api/myvolunteers", { withCredentials: true });
+    const res = await axios.get("https://backend.cpceventscan.com/api/myvolunteers", { withCredentials: true });
 
     const statusMap: Record<number, string> = {
       0: "Pending",
@@ -271,7 +271,7 @@ async function onCancel(row: VolunteerApplication) {
   if (result.isConfirmed) {
     try {
 
-      await axios.delete(`http://localhost:5000/api/volunteers/${row.volunteered_id}`, { withCredentials: true });
+      await axios.delete(`https://backend.cpceventscan.com/api/volunteers/${row.volunteered_id}`, { withCredentials: true });
 
       Swal.fire({ 
         title: 'Cancelled!', 
@@ -408,6 +408,7 @@ ion-content {
   padding: 14px;
   box-shadow: 0 6px 18px rgba(0,0,0,0.08);
   text-align: center;
+  color: #000;
 }
 .card-icon { font-size: 26px; margin-bottom: 8px; display: inline-block; }
 .card-icon.approved { color: #d4a017; }
@@ -539,6 +540,7 @@ table {
   font-size: 13px;
   border: 1px solid #07055d;
   border-collapse: collapse;
+  color: #000;
 }
 .styled-table th{
     padding: 12px 0;
@@ -646,7 +648,7 @@ table {
     --padding-start:0px
 }
 .bootstrap-modal {
-  --height: 450px !important;
+  --height: auto !important;
   padding: 10px;
 }
 .bootstrap-modal select {

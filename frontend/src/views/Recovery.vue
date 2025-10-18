@@ -52,11 +52,15 @@
               </ul>
             </li>
 
-            <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
-            <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
-            <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
-            <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
-            <li><router-link to="/account-center" class="sidebar-link">Account Center</router-link></li>
+             <template v-if="admin && admin.status !== 0">
+              <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
+              <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
+              <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
+              <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
+            </template>
+            <template v-if="admin && admin.status !== 2">
+              <li><router-link to="/Account-center" class="sidebar-link">Account Center</router-link></li>
+            </template>
             <li>
               <router-link to="/adminLogIn" class="sidebar-link" @click="confirmLogout">
                 Log Out
@@ -234,7 +238,7 @@ const itemsPerPage = 10;
 /* ====== FETCH DATA FROM BACKEND ====== */
 const fetchStudents = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/twofa');
+    const res = await axios.get('https://backend.cpceventscan.com/api/twofa');
     students.value = res.data.map((item) => ({
       studID: item.student_id,
       name: item.name,
@@ -249,13 +253,31 @@ const fetchStudents = async () => {
     console.error('Error fetching 2FA records:', err);
   }
 };
-onMounted(fetchStudents);
+const admin = ref<any>(null);
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('https://backend.cpceventscan.com/api/check-admin-session', {
+      withCredentials: true
+    });
+
+    if (res.data.loggedIn && res.data.admin) {
+      admin.value = res.data.admin;
+    } else {
+      router.replace('/adminLogIn'); // redirect if not logged in
+    }
+  } catch (err) {
+    console.error('Session check failed:', err);
+    router.replace('/adminLogIn');
+  }
+  fetchStudents()
+});
 
 /* ====== TOGGLE 2FA STATUS ====== */
 const toggle2FA = async (student) => {
   const newStatus = student.twoFA === 'Enabled' ? 0 : 1; // flip correctly
   try {
-    await axios.post('http://localhost:5000/api/twofa/update', {
+    await axios.post('https://backend.cpceventscan.com/api/twofa/update', {
       student_id: student.studID,
       status: newStatus
     });

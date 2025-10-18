@@ -47,11 +47,15 @@
                 <li><router-link to="/attendance-records" class="sub">View Attendance Records</router-link></li>
               </ul>
             </li>
-            <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
-            <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
-            <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
-            <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
-            <li><router-link to="/account-center" class="sidebar-link">Account Center</router-link></li>
+             <template v-if="admin && admin.status !== 0">
+              <li><router-link to="/Request" class="sidebar-link">Request Management</router-link></li>
+              <li><router-link to="/Notif" class="sidebar-link">Notification Management</router-link></li>
+              <li><router-link to="/Feed" class="sidebar-link">Feedback Management</router-link></li>
+              <li><router-link to="/Update" class="sidebar-link">Featured Updates</router-link></li>
+            </template>
+            <template v-if="admin && admin.status !== 2">
+              <li><router-link to="/Account-center" class="sidebar-link">Account Center</router-link></li>
+            </template>
             <li>
               <a href="javascript:void(0);" class="sidebar-link" @click="confirmLogout">
                   Log Out
@@ -116,7 +120,6 @@
                   <th >Time In (PM)</th>
                   <th class="break">Mid-Event Check (PM)</th>
                   <th>Time Out (PM)</th>
-                  <th>VA</th>
                   <th>AR</th>
                   <th>Remarks</th>
                   <th >Attendance Status</th>
@@ -133,8 +136,7 @@
                   <td>{{ detail.afternoontimeIn }}</td>
                   <td>{{ detail.afternoonmidEventcheck }}</td>
                   <td>{{ detail.afternoontimeOut }}</td>
-                  <td>{{ detail.afternoontimeOut }}</td>
-                  <td>{{ detail.afternoontimeOut }}</td>
+                  <td>{{ detail.absenceReqStatus }}</td>
                   <td>
                     <span :style="getRemarksStyle(detail.remarks)">{{ detail.remarks || '-' }}</span>
                   </td>
@@ -223,7 +225,7 @@ const toggleEventMenu = () => (showEventMenu.value = !showEventMenu.value);
 
   if (result.isConfirmed) {
     try {
-      await axios.post('http://localhost:5000/api/users/admin-logout', {}, { withCredentials: true });
+      await axios.post('https://backend.cpceventscan.com/api/users/admin-logout', {}, { withCredentials: true });
       router.push('/adminLogIn'); // redirect to login page
     } catch (err) {
       console.error(err);
@@ -261,6 +263,7 @@ const generateReport = () => {
 
 /* state for summary */
 const eventName = ref('');
+const eventID= ref('');
 const eventDate = ref('');
 const totalAttendees = ref(0);
 const totalAbsences = ref(0);
@@ -286,6 +289,8 @@ interface AttendanceDetail {
   afternoontimeIn: string | null;
   afternoonmidEventcheck: string | null;
   afternoontimeOut: string | null;
+  volunteerReqStatus: string | null;
+  absenceReqStatus: string | null;
 }
 
 const attendanceDetails = ref<AttendanceDetail[]>([]);
@@ -320,7 +325,7 @@ const fetchAttendanceDetails = async () => {
       return;
     }
 
-    const res = await axios.get(`http://localhost:5000/api/attendance/details/${eventId}`);
+    const res = await axios.get(`https://backend.cpceventscan.com/api/attendance/details/${eventId}`);
     const rawList = res.data?.attendanceDetails ?? [];
 
     // Map API response to AttendanceDetail
@@ -332,8 +337,8 @@ const fetchAttendanceDetails = async () => {
       const afternoonmidEventcheck = formatTimeSafe(d.afternoonmidEventcheck);
       const afternoontimeOut = formatTimeSafe(d.afternoontimeOut);
 
-      const startDate = parseDateSafe(d.startDateTime);
-      const endDate = parseDateSafe(d.endDateTime);
+      const startDate = parseDateSafe(d.start_date_time);
+      const endDate = parseDateSafe(d.end_date_time);
       const now = new Date();
       const eventEnded = endDate ? now > endDate : false;
 
@@ -375,26 +380,48 @@ const fetchAttendanceDetails = async () => {
         remarks,
         attendanceStats,
         canSettle: Number(d.canSettle ?? 0) === 1,
-        start_date_time: d.startDateTime,
-        end_date_time: d.endDateTime,
+        start_date_time: d.start_date_time,
+        end_date_time: d.end_date_time,
         event_name: d.event_name,
+        absenceReqStatus: d.absenceReqStatus,
       } as AttendanceDetail;
     });
 
     // Update summary
     if (attendanceDetails.value.length > 0) {
       const first = attendanceDetails.value[0];
+      console.log(first);
+
       eventName.value = first.event_name ?? '';
-      eventDate.value = parseDateSafe(first.start_date_time)?.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) || '';
+
       const start = parseDateSafe(first.start_date_time);
       const end = parseDateSafe(first.end_date_time);
       const now = new Date();
+
+      const dateOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+      const timeOptions = {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Manila', // ✅ Ensures PH time
+      };
+
       if (start && end) {
-        eventStats.value = now < start ? 'Upcoming' : now <= end ? 'Ongoing' : 'Done';
+  const startDate = start.toLocaleDateString('en-PH', dateOptions);
+  const startTime = start.toLocaleTimeString('en-PH', timeOptions);
+  const endDate = end.toLocaleDateString('en-PH', dateOptions); // ✅ use dateOptions here
+  const endTime = end.toLocaleTimeString('en-PH', timeOptions);
+
+  // ✅ If event is same day, simplify display
+  eventDate.value = startDate === endDate
+    ? `${startDate} — ${startTime} to ${endTime}`
+    : `${startDate} ${startTime} — ${endDate} ${endTime}`;
+
+  eventStats.value = now < start ? 'Upcoming' : now <= end ? 'Ongoing' : 'Done';
       } else {
+        eventDate.value = '';
         eventStats.value = 'Unknown';
       }
-
       totalAttendees.value = attendanceDetails.value.length;
       totalAbsences.value = attendanceDetails.value.filter(r => r.remarks.toLowerCase() === 'missed').length;
       incompleteAttendance.value = attendanceDetails.value.filter(r => r.remarks.toLowerCase() === 'incomplete').length;
@@ -413,8 +440,23 @@ const fetchAttendanceDetails = async () => {
   }
 };
 
+const admin = ref<any>(null);
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    const res = await axios.get('https://backend.cpceventscan.com/api/check-admin-session', {
+      withCredentials: true
+    });
+
+    if (res.data.loggedIn && res.data.admin) {
+      admin.value = res.data.admin;
+    } else {
+      router.replace('/adminLogIn'); // redirect if not logged in
+    }
+  } catch (err) {
+    console.error('Session check failed:', err);
+    router.replace('/adminLogIn');
+  }
   fetchAttendanceDetails();
 });
 
@@ -474,7 +516,7 @@ const settleAttendance = async (detail: AttendanceDetail) => {
   if (result.isConfirmed) {
     try {
       // ✅ Call API to settle
-      await axios.put(`http://localhost:5000/api/attendance/settle/${detail.attendance_id}`);
+      await axios.put(`https://backend.cpceventscan.com/api/attendance/settle/${detail.attendance_id}`);
 
       // ✅ Update UI instantly
       detail.attendanceStats = 'Settled';   // 🔥 changed from 'Complete' to 'Settled'
@@ -702,7 +744,7 @@ h4{
 .event-table th,
 .event-table td {
   text-align: center;
-  padding: 12px;
+  padding: 0 !important;
   border: 1px solid #ccc;
 }
 
@@ -767,7 +809,7 @@ thead {
 }
 
 thead th {
-  padding: 10px;
+  padding: 0 2px;
   text-align: left;
   white-space: nowrap;
 }

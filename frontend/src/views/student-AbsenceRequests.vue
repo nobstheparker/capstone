@@ -107,7 +107,7 @@
                     <p><strong>Submission Date:</strong> {{ selectedRequest.date }}</p>
                     <p v-if="selectedRequest.documentation">
                         <strong>Documentation: </strong>
-                        <a :href="`http://localhost:5000/uploads/${selectedRequest.documentation}`" target="_blank">View File</a>
+                        <a :href="`https://backend.cpceventscan.com/uploads/${selectedRequest.documentation}`" target="_blank">View File</a>
                     </p>
                     <p><strong>Event Start:</strong> {{ formatDateTime(selectedRequest.start_date_time) }}</p>
                     <p><strong>Event End:</strong> {{ formatDateTime(selectedRequest.end_date_time) }}</p>
@@ -168,7 +168,7 @@ const selectedRequest = ref<AbsenceRequest | null>(null);
 const fetchAbsenceRequests = async () => {
  try {
   const res = await axios.get(
-    "http://localhost:5000/api/absence-request/myabsense",
+    "https://backend.cpceventscan.com/api/absence-request/myabsense",
     { withCredentials: true }
   );
 
@@ -229,7 +229,7 @@ async function onCancel(row: AbsenceRequest) {
 
   if (result.isConfirmed) {
     try {
-      await axios.delete(`http://localhost:5000/api/absence-request/${row.absence_requests_id}`, { withCredentials: true });
+      await axios.delete(`https://backend.cpceventscan.com/api/absence-request/${row.absence_requests_id}`, { withCredentials: true });
 
       Swal.fire({
         title: 'Cancelled!',
@@ -379,6 +379,7 @@ ion-content {
   padding: 14px;
   box-shadow: 0 6px 18px rgba(0,0,0,0.08);
   text-align: center;
+  color: #fff !important;
 }
 .card-icon { font-size: 26px; margin-bottom: 8px; display: inline-block; }
 .card-icon.approved { color: #d4a017; }
@@ -510,6 +511,7 @@ table {
   font-size: 13px;
   border: 1px solid #07055d;
   border-collapse: collapse;
+  color: #000;
 }
 .styled-table th{
     padding: 12px 0;
